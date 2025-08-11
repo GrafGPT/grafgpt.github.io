@@ -1,6 +1,14 @@
-[
-  {
-    "title": "Archive 1",
-    "url": "https://github.com/GrafGPT/grafgpt.github.io/raw/refs/heads/main/Archive1.txt"
-  }
-]
+{
+  "items": [
+    {
+      "id": "a1",
+      "title": "Archive 1",
+      "date": "2025-08-11",
+      "section": "archive",
+      "tags": ["чаты"],
+      "excerpt": "Первая тестовая запись.",
+      "file": "https://raw.githubusercontent.com/GrafGPT/grafgpt.github.io/main/archive-1.txt",
+      "format": "txt"
+    }
+  ]
+}
