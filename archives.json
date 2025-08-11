@@ -1,7 +1,12 @@
 {
-  "archives": [
-    "https://raw.githubusercontent.com/GrafGPT/grafgpt.github.io/main/Archive1.txt",
-    "https://raw.githubusercontent.com/GrafGPT/grafgpt.github.io/main/Archive2.txt",
-    "https://raw.githubusercontent.com/GrafGPT/grafgpt.github.io/main/Archive3.txt"
-  ]
+    "archives": [
+        {
+            "name": "Архив 1",
+            "url": "https://github.com/GrafGPT/grafgpt.github.io/raw/main/Archive%201.txt"
+        },
+        {
+            "name": "Архив 2",
+            "url": "https://github.com/GrafGPT/grafgpt.github.io/raw/main/Archive%202.txt"
+        }
+    ]
 }
