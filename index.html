@@ -1,155 +1,37 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>Graf Buffer Archive</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root{--bg:#0b0e11;--panel:#12161b;--muted:#8da0b3;--text:#e8edf4;--border:#1c222b;--accent:#4cc9f0}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
-    header{position:sticky;top:0;background:#12161b;border-bottom:1px solid var(--border);padding:12px 16px}
-    h1{margin:0;font-size:18px}
-    .wrap{max-width:980px;margin:0 auto;padding:16px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    input,button,select{font:inherit}
-    input{flex:1;min-width:220px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0e141c;color:var(--text)}
-    button{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#17202a;color:var(--text);cursor:pointer}
-    button:hover{border-color:#2a3747}
-    .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:16px}
-    .card{border:1px solid var(--border);border-radius:12px;background:#0f141b;padding:12px;display:flex;flex-direction:column;gap:8px}
-    .muted{color:var(--muted);font-size:13px}
-    .tag{display:inline-block;padding:2px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted);margin-right:6px}
-    .viewer{margin-top:18px;border:1px solid var(--border);border-radius:12px;background:#0f141b}
-    .viewer header{position:static;background:#0f141b;border-bottom:1px solid var(--border);padding:10px 12px}
-    .viewer .content{padding:12px;overflow:auto;max-height:70vh;white-space:pre-wrap;word-break:break-word}
-    a.btn{display:inline-block;text-decoration:none;color:var(--text);border:1px solid var(--border);padding:8px 12px;border-radius:10px}
-    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px;color:var(--muted)}
-  </style>
+    <meta charset="UTF-8">
+    <title>Архивы GrafGPT</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { color: #444; }
+        ul { line-height: 1.6; }
+        a { color: #007acc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
-  <header><div class="wrap"><h1>Graf Buffer Archive <span class="pill">MVP</span></h1></div></header>
-  <div class="wrap">
-    <div class="row">
-      <input id="q" placeholder="Поиск по заголовкам и тегам…">
-      <button id="reload">Обновить список</button>
-    </div>
-    <div id="list" class="list"></div>
+    <h1>Архивы GrafGPT</h1>
+    <ul id="archiveList"></ul>
 
-    <div id="viewer" class="viewer" style="display:none">
-      <header class="row">
-        <div id="v-title" style="flex:1">—</div>
-        <a id="v-open" class="btn" target="_blank" rel="noopener">Открыть файл</a>
-        <button id="v-close">Закрыть</button>
-      </header>
-      <div id="v-meta" class="muted" style="padding:0 12px 8px"></div>
-      <div id="v-content" class="content"></div>
-    </div>
-  </div>
-
-  <template id="cardTmpl">
-    <article class="card">
-      <div class="muted meta"></div>
-      <h3 class="title"></h3>
-      <div class="muted tags"></div>
-      <div class="row">
-        <button class="open">Открыть</button>
-        <a class="btn raw" target="_blank" rel="noopener">Raw</a>
-      </div>
-    </article>
-  </template>
-
-  <script>
-    const $ = s => document.querySelector(s);
-    const listEl = $('#list');
-    const qEl = $('#q');
-    const viewer = $('#viewer');
-    const vTitle = $('#v-title');
-    const vMeta = $('#v-meta');
-    const vOpen = $('#v-open');
-    const vContent = $('#v-content');
-
-    let items = [];
-
-    async function loadIndex(){
-      const res = await fetch('archive.json?'+Date.now());
-      if(!res.ok){ items=[]; render(); return; }
-      const data = await res.json();
-      // Поддержка двух форматов: объект {items:[...]} и простой массив [...]
-      items = Array.isArray(data) ? data : (data.items || []);
-      render();
-    }
-
-    function render(){
-      const q = qEl.value.trim().toLowerCase();
-      const filtered = items.filter(it=>{
-        const inTitle = (it.title||'').toLowerCase().includes(q);
-        const inTags  = (it.tags||[]).join(' ').toLowerCase().includes(q);
-        return !q || inTitle || inTags;
-      });
-      listEl.innerHTML = '';
-      if(filtered.length===0){
-        const empty = document.createElement('div');
-        empty.className='card muted';
-        empty.textContent = 'Пусто. Добавьте записи в archive.json';
-        listEl.appendChild(empty);
-        return;
-      }
-      filtered.forEach(it=> listEl.appendChild(card(it)));
-    }
-
-    function card(it){
-      const tpl = $('#cardTmpl').content.cloneNode(true);
-      tpl.querySelector('.meta').textContent = `${it.date || ''} ${it.section ? '· '+(it.section==='book'?'Главы книги':'Архив чатов') : ''}`;
-      tpl.querySelector('.title').textContent = it.title || '(без названия)';
-      const tags = (it.tags||[]).map(t=>`<span class="tag">${t}</span>`).join(' ');
-      tpl.querySelector('.tags').innerHTML = tags;
-
-      const openBtn = tpl.querySelector('.open');
-      const rawA = tpl.querySelector('.raw');
-      rawA.href = it.file;
-
-      openBtn.onclick = ()=> openItem(it);
-      return tpl;
-    }
-
-    async function openItem(it){
-      vTitle.textContent = it.title || '—';
-      vMeta.textContent = `${it.date || ''} ${it.section ? '· '+(it.section==='book'?'Главы книги':'Архив чатов') : ''}`;
-      vOpen.href = it.file || '#';
-      vContent.textContent = 'Загрузка…';
-      viewer.style.display = '';
-
-      try{
-        const res = await fetch((it.file||'') + '?' + Date.now());
-        if(!res.ok) throw new Error('Файл недоступен');
-        const text = await res.text();
-        const fmt = (it.format||'txt').toLowerCase();
-
-        if(fmt==='html'){
-          vContent.innerHTML = text;
-        }else if(fmt==='md'){
-          // мини-обработка markdown (заголовки и абзацы)
-          const html = text
-            .replace(/^### (.*)$/gm,'<h3>$1</h3>')
-            .replace(/^## (.*)$/gm,'<h2>$1</h2>')
-            .replace(/^# (.*)$/gm,'<h1>$1</h1>')
-            .replace(/\n\n+/g,'</p><p>')
-            .replace(/^/,'<p>').replace(/$/,'</p>');
-          vContent.innerHTML = html;
-        }else{
-          vContent.textContent = text; // txt
-        }
-      }catch(e){
-        vContent.textContent = 'Не удалось загрузить содержимое файла.';
-      }
-    }
-
-    $('#v-close').onclick = ()=>{ viewer.style.display='none'; };
-    $('#reload').onclick = loadIndex;
-    qEl.oninput = render;
-
-    loadIndex();
-  </script>
+    <script>
+        fetch('archives.json')
+            .then(response => response.json())
+            .then(data => {
+                const list = document.getElementById('archiveList');
+                data.archives.forEach(url => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.textContent = url.split('/').pop();
+                    a.target = "_blank";
+                    li.appendChild(a);
+                    list.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Ошибка загрузки списка архивов:', error));
+    </script>
 </body>
 </html>
+
