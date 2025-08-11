@@ -1,36 +1,142 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Архивы GrafGPT</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { color: #444; }
-        ul { line-height: 1.6; }
-        a { color: #007acc; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Буферный сайт · Архивы GrafGPT</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b0e11;--panel:#11161d;--text:#e8edf4;--muted:#93a0af;
+      --border:#1b2430;--accent:#49c6f0;--accent2:#a8dadc;--ok:#7bd88f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+         font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+    header{position:sticky;top:0;z-index:5;background:var(--panel);
+           border-bottom:1px solid var(--border);padding:14px 16px}
+    h1{margin:0;font-size:18px;letter-spacing:.2px}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    input[type="search"]{
+      flex:1;min-width:220px;padding:12px 14px;border-radius:12px;
+      border:1px solid var(--border);background:#0e141c;color:var(--text);
+      font-size:16px
+    }
+    button,.btn{
+      padding:12px 16px;border-radius:12px;border:1px solid var(--border);
+      background:#18222e;color:var(--text);cursor:pointer;font-size:16px;
+      min-height:44px;
+    }
+    button:hover,.btn:hover{border-color:#2a3747}
+    .pill{display:inline-block;border:1px solid var(--border);border-radius:999px;
+          padding:2px 8px;font-size:12px;color:var(--muted);margin-left:8px}
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+    .card{
+      background:#0f141b;border:1px solid var(--border);border-radius:16px;
+      padding:14px;display:flex;flex-direction:column;gap:10px;min-height:140px
+    }
+    .title{margin:0;font-size:18px}
+    .muted{color:var(--muted);font-size:13px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .tag{display:inline-block;padding:2px 8px;border:1px solid var(--border);
+         border-radius:999px;font-size:12px;color:var(--muted)}
+    .empty,.error{
+      border:1px dashed var(--border);border-radius:14px;padding:18px;text-align:center;
+      color:var(--muted)
+    }
+    footer{border-top:1px solid var(--border);margin-top:18px;padding:10px;color:var(--muted);font-size:12px}
+    a.btn{display:inline-block;text-decoration:none;color:var(--text)}
+  </style>
 </head>
 <body>
-    <h1>Архивы GrafGPT</h1>
-    <ul id="archiveList"></ul>
+  <header>
+    <div class="wrap">
+      <h1>Архивы GrafGPT <span class="pill">буфер внешней памяти</span></h1>
+    </div>
+  </header>
 
-    <script>
-        fetch('archives.json')
-            .then(response => response.json())
-            .then(data => {
-                const list = document.getElementById('archiveList');
-                data.archives.forEach(url => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.textContent = url.split('/').pop();
-                    a.target = "_blank";
-                    li.appendChild(a);
-                    list.appendChild(li);
-                });
-            })
-            .catch(error => console.error('Ошибка загрузки списка архивов:', error));
-    </script>
+  <div class="wrap">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Поиск по названиям и тегам…" aria-label="Поиск" />
+      <button id="reload">Обновить</button>
+    </div>
+
+    <div id="status" class="muted" style="margin:10px 2px">Загрузка…</div>
+    <div id="list" class="grid"></div>
+    <div id="empty" class="empty" style="display:none">Пока пусто. Добавь записи в <code>archives.json</code>.</div>
+    <div id="err" class="error" style="display:none">Не удалось загрузить <code>archives.json</code>.</div>
+
+    <footer>Файлы читаются из <code>archives.json</code> (сырой список ссылок). Кнопки увеличены для удобства на планшете.</footer>
+  </div>
+
+  <template id="card">
+    <article class="card">
+      <div class="muted meta"></div>
+      <h3 class="title"></h3>
+      <div class="row">
+        <span class="tag">архив</span>
+      </div>
+      <div class="row">
+        <a class="btn open" target="_blank" rel="noopener">Открыть</a>
+        <button class="copy">Скопировать ссылку</button>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const list = $('#list'), q = $('#q'), empty = $('#empty'), err = $('#err'), status = $('#status');
+    let data = [];
+
+    async function load() {
+      status.textContent = 'Загрузка…';
+      err.style.display = 'none';
+      try {
+        const res = await fetch('archives.json?'+Date.now());
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const json = await res.json();
+        // поддержка форматов: массив объектов [{name,url,tags,date}] или {archives:[...]}
+        data = Array.isArray(json) ? json : (json.archives || []);
+        render();
+        status.textContent = `Найдено записей: ${data.length}`;
+      } catch (e) {
+        console.error(e);
+        err.style.display = '';
+        status.textContent = 'Ошибка загрузки.';
+      }
+    }
+
+    function render() {
+      const query = q.value.trim().toLowerCase();
+      const items = (data||[]).filter(it=>{
+        const name = (it.name||'').toLowerCase();
+        const tags = (it.tags||[]).join(' ').toLowerCase();
+        return !query || name.includes(query) || tags.includes(query);
+      });
+      list.innerHTML = '';
+      empty.style.display = items.length ? 'none' : '';
+      items.forEach(it => list.appendChild(card(it)));
+    }
+
+    function card(it){
+      const t = $('#card').content.cloneNode(true);
+      t.querySelector('.title').textContent = it.name || 'Без названия';
+      t.querySelector('.meta').textContent = it.date ? it.date : '';
+      const open = t.querySelector('.open');
+      open.href = it.url;
+
+      const copyBtn = t.querySelector('.copy');
+      copyBtn.onclick = async ()=> {
+        try { await navigator.clipboard.writeText(it.url); copyBtn.textContent='Скопировано ✓'; setTimeout(()=>copyBtn.textContent='Скопировать ссылку',1200); }
+        catch { copyBtn.textContent='Копирование не удалось'; }
+      };
+      return t;
+    }
+
+    $('#reload').onclick = load;
+    q.oninput = render;
+    load();
+  </script>
 </body>
 </html>
+
