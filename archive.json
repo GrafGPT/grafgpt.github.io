@@ -2,12 +2,13 @@
   "items": [
     {
       "id": "a1",
-      "title": "Первая запись архива",
+      "title": "Archive 1",
       "date": "2025-08-11",
       "section": "archive",
-      "tags": ["начало"],
-      "excerpt": "Краткое описание записи.",
-      "content": "<p>Основной текст записи (можно в HTML). Если есть чистый текст — просто вставь его сюда.</p>"
+      "tags": ["чаты"],
+      "excerpt": "Первая тестовая запись.",
+      "file": "https://raw.githubusercontent.com/GrafGPT/grafgpt.github.io/main/archive-1.txt",
+      "format": "txt"
     }
   ]
 }
